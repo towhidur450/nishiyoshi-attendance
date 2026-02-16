@@ -38,6 +38,7 @@
         .navbar .nav-buttons { display: flex; gap: 10px; }
         .navbar button { background: #555; color: white; border: none; padding: 8px 16px; cursor: pointer; }
         .navbar button:hover { background: red; }
+        
     </style>
 </head>
 <body>
@@ -185,386 +186,393 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded');
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM loaded');
 
-            // サービスワーカーを登録 (PWA用)
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js')
-                    .then(registration => console.log('Service Worker registered'))
-                    .catch(error => console.log('Service Worker registration failed'));
+        // サービスワーカーを登録 (PWA用)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(registration => console.log('Service Worker registered'))
+                .catch(error => console.log('Service Worker registration failed'));
+        }
+
+        // 要素を取得
+        const navLoginBtn = document.getElementById('navLoginBtn');
+        const navSignupBtn = document.getElementById('navSignupBtn');
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        const attendanceForm = document.getElementById('attendanceForm');
+        const changePasswordForm = document.getElementById('changePasswordForm');
+        const employeeLogBody = document.getElementById('employeeLogBody');
+        const logBody = document.getElementById('logBody');
+        const employeeDownloadBtn = document.getElementById('employeeDownloadBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const logoutBtns = document.querySelectorAll('#logoutBtn');
+        const checkInBtn = document.getElementById('checkInBtn');
+        const checkOutBtn = document.getElementById('checkOutBtn');
+        const employeeYear = document.getElementById('employeeYear');
+        const employeeMonth = document.getElementById('employeeMonth');
+        const adminYear = document.getElementById('adminYear');
+        const adminMonth = document.getElementById('adminMonth');
+
+        // 年オプションを動的に追加
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear - 5; year <= currentYear; year++) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            employeeYear.appendChild(option);
+            adminYear.appendChild(option.cloneNode(true));
+        }
+        employeeYear.value = currentYear;
+        adminYear.value = currentYear;
+        employeeMonth.value = new Date().getMonth();
+        adminMonth.value = new Date().getMonth();
+
+        // 変数初期化
+        let attendanceLog = JSON.parse(localStorage.getItem('attendanceLog')) || [];
+        let users = JSON.parse(localStorage.getItem('users')) || [];
+        
+        // 初期管理者ユーザーを追加 (localStorageが空の場合)
+        if (users.length === 0) {
+            users.push({ id: 'nishiyoshi', password: 'nishiyoshi0203', role: 'admin' });
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+        
+        let currentUser = JSON.parse(sessionStorage.getItem('currentUser')) || null;
+
+        // UI切り替え関数
+        function toggleUI() {
+            document.getElementById('loginSection').style.display = currentUser ? 'none' : 'block';
+            document.getElementById('signupSection').style.display = 'none';
+            document.getElementById('userSection').style.display = currentUser && currentUser.role === 'user' ? 'block' : 'none';
+            document.getElementById('employeeSection').style.display = currentUser && currentUser.role === 'employee' ? 'block' : 'none';
+            document.getElementById('adminSection').style.display = currentUser && currentUser.role === 'admin' ? 'block' : 'none';
+            if (currentUser && currentUser.role === 'employee') loadEmployeeLog();
+            if (currentUser && currentUser.role === 'admin') loadLog();
+        }
+
+        toggleUI();
+
+        // ナビゲーションバーのボタン
+        navLoginBtn.addEventListener('click', () => {
+            loginForm.style.display = 'block';
+            signupForm.style.display = 'none';
+        });
+        navSignupBtn.addEventListener('click', () => {
+            signupForm.style.display = 'block';
+            loginForm.style.display = 'none';
+        });
+
+        // サインアップ処理
+        signupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('signupId').value.trim();
+            const password = document.getElementById('signupPassword').value;
+
+            if (users.find(user => user.id === id)) {
+                alert('このIDは既に使用されています。');
+                return;
+            }
+            if (password.length < 6) {
+                alert('パスワードは6文字以上で入力してください。');
+                return;
             }
 
-            // 要素を取得
-            const navLoginBtn = document.getElementById('navLoginBtn');
-            const navSignupBtn = document.getElementById('navSignupBtn');
-            const loginForm = document.getElementById('loginForm');
-            const signupForm = document.getElementById('signupForm');
-            const attendanceForm = document.getElementById('attendanceForm');
-            const changePasswordForm = document.getElementById('changePasswordForm');
-            const employeeLogBody = document.getElementById('employeeLogBody');
-            const logBody = document.getElementById('logBody');
-            const employeeDownloadBtn = document.getElementById('employeeDownloadBtn');
-            const downloadBtn = document.getElementById('downloadBtn');
-            const clearBtn = document.getElementById('clearBtn');
-            const logoutBtns = document.querySelectorAll('#logoutBtn');
-            const checkInBtn = document.getElementById('checkInBtn');
-            const checkOutBtn = document.getElementById('checkOutBtn');
-            const employeeYear = document.getElementById('employeeYear');
-            const employeeMonth = document.getElementById('employeeMonth');
-            const adminYear = document.getElementById('adminYear');
-            const adminMonth = document.getElementById('adminMonth');
-
-            // 年オプションを動的に追加
-            const currentYear = new Date().getFullYear();
-            for (let year = currentYear - 5; year <= currentYear; year++) {
-                const option = document.createElement('option');
-                option.value = year;
-                option.textContent = year;
-                employeeYear.appendChild(option);
-                adminYear.appendChild(option.cloneNode(true));
-            }
-            employeeYear.value = currentYear;
-            adminYear.value = currentYear;
-            employeeMonth.value = new Date().getMonth();
-            adminMonth.value = new Date().getMonth();
-
-            // 変数初期化
-            let attendanceLog = JSON.parse(localStorage.getItem('attendanceLog')) || [];
-            let users = JSON.parse(localStorage.getItem('users')) || [];
-            let currentUser = JSON.parse(sessionStorage.getItem('currentUser')) || null;
-
-            // UI切り替え関数
-            function toggleUI() {
-                document.getElementById('loginSection').style.display = currentUser ? 'none' : 'block';
-                document.getElementById('signupSection').style.display = 'none';
-                document.getElementById('userSection').style.display = currentUser && currentUser.role === 'user' ? 'block' : 'none';
-                document.getElementById('employeeSection').style.display = currentUser && currentUser.role === 'employee' ? 'block' : 'none';
-                document.getElementById('adminSection').style.display = currentUser && currentUser.role === 'admin' ? 'block' : 'none';
-                if (currentUser && currentUser.role === 'employee') loadEmployeeLog();
-                if (currentUser && currentUser.role === 'admin') loadLog();
+            // 管理者ロールチェック: IDが "nishiyoshi" かつパスワードが "nishiyoshi0203" の場合のみ管理者
+            let role = 'employee';
+            if (id === 'nishiyoshi' && password === 'nishiyoshi0203') {
+                role = 'admin';
             }
 
-            toggleUI();
+            users.push({ id, password, role });
+            localStorage.setItem('users', JSON.stringify(users));
+            alert(`サインアップが完了しました。ロール: ${role}。ログインしてください。`);
+            signupForm.reset();
+            signupForm.style.display = 'none';
+            loginForm.style.display = 'block';
+        });
 
-            // ナビゲーションバーのボタン
-            navLoginBtn.addEventListener('click', () => {
-                loginForm.style.display = 'block';
-                signupForm.style.display = 'none';
-            });
-            navSignupBtn.addEventListener('click', () => {
-                signupForm.style.display = 'block';
-                loginForm.style.display = 'none';
-            });
+        // ログイン処理
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('loginId').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const user = users.find(u => u.id === id && u.password === password);
 
-            // サインアップ処理
-            signupForm.addEventListener('submit', (e) => {
+            if (user) {
+                currentUser = user;
+                sessionStorage.setItem('currentUser', JSON.stringify(user));
+                alert(`${user.role}としてログインしました`);
+                toggleUI();
+                loginForm.reset();
+            } else {
+                alert('IDまたはパスワードが間違っています。');
+            }
+        });
+
+        // パスワード変更処理
+        if (changePasswordForm) {
+            changePasswordForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const id = document.getElementById('signupId').value.trim();
-                const password = document.getElementById('signupPassword').value;
-
-                if (users.find(user => user.id === id)) {
-                    alert('このIDは既に使用されています。');
-                    return;
-                }
-                if (password.length < 6) {
+                const newPassword = document.getElementById('newPassword').value;
+                if (newPassword.length < 6) {
                     alert('パスワードは6文字以上で入力してください。');
                     return;
                 }
-
-                // 管理者ロールチェック: IDが "nishiyoshi" かつパスワードが "nishiyoshi0203" の場合のみ管理者
-                let role = 'employee';
-                if (id === 'nishiyoshi' && password === 'nishiyoshi0203') {
-                    role = 'admin';
-                }
-
-                users.push({ id, password, role });
+                currentUser.password = newPassword;
+                const index = users.findIndex(u => u.id === currentUser.id);
+                users[index] = currentUser;
                 localStorage.setItem('users', JSON.stringify(users));
-                alert(`サインアップが完了しました。ロール: ${role}。ログインしてください。`);
-                signupForm.reset();
-                signupForm.style.display = 'none';
-                loginForm.style.display = 'block';
+                alert('パスワードが変更されました。');
+                changePasswordForm.reset();
             });
+        }
 
-            // ログイン処理
-            loginForm.addEventListener('submit', (e) => {
+        // ログアウト処理
+        logoutBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentUser = null;
+                sessionStorage.removeItem('currentUser');
+                alert('ログアウトしました');
+                toggleUI();
+            });
+        });
+
+        // 従業員用ログを読み込む
+        function loadEmployeeLog() {
+            employeeLogBody.innerHTML = '';
+            const employeeEntries = attendanceLog.filter(entry => entry.name === currentUser.id);
+            employeeEntries.forEach(entry => {
+                const locationText = entry.locationName || 'N/A';
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${entry.action}</td><td>${entry.timestamp}</td><td>${locationText}</td>`;
+                employeeLogBody.appendChild(row);
+            });
+        }
+
+        // 管理者用ログを読み込む
+        function loadLog() {
+            logBody.innerHTML = '';
+            attendanceLog.forEach(entry => {
+                const locationText = entry.locationName || 'N/A';
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${entry.name}</td><td>${entry.action}</td><td>${entry.timestamp}</td><td>${locationText}</td>`;
+                logBody.appendChild(row);
+            });
+        }
+
+        // 緯度経度から場所名を取得する関数
+        async function getLocationName(lat, lng) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+                const data = await response.json();
+                return data.display_name || '不明な場所';
+            } catch (error) {
+                console.error('場所名の取得エラー:', error);
+                return '場所利用不可';
+            }
+        }
+
+        // フォーム送信を処理
+        if (attendanceForm) {
+            attendanceForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const id = document.getElementById('loginId').value.trim();
-                const password = document.getElementById('loginPassword').value;
-                const user = users.find(u => u.id === id && u.password === password);
+                const name = document.getElementById('name').value;
+                const action = e.submitter.id === 'checkInBtn' ? 'チェックイン' : 'チェックアウト';
+                const timestamp = new Date().toLocaleString('ja-JP');
+                const currentDate = new Date().toDateString();
 
-                if (user) {
-                    currentUser = user;
-                    sessionStorage.setItem('currentUser', JSON.stringify(user));
-                    alert(`${user.role}としてログインしました`);
-                    toggleUI();
-                    loginForm.reset();
+                const existingEntry = attendanceLog.find(entry => {
+                    const entryDate = new Date(entry.timestamp).toDateString();
+                    return entry.name === name && entryDate === currentDate && entry.action === action;
+                });
+
+                if (existingEntry) {
+                    alert(`同じ日に${action}は一度しかできません。`);
+                    return;
+                }
+
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            const locationName = await getLocationName(lat, lng);
+                            const entry = { name, action, timestamp, locationName };
+                            attendanceLog.push(entry);
+                            localStorage.setItem('attendanceLog', JSON.stringify(attendanceLog));
+                            if (currentUser && currentUser.id === name) loadEmployeeLog();
+                            if (currentUser && currentUser.role === 'admin') loadLog();
+                            attendanceForm.reset();
+                        },
+                        (error) => {
+                            alert('場所へのアクセスが拒否されたか利用できません。場所なしでエントリを保存します。');
+                            const entry = { name, action, timestamp, locationName: 'N/A' };
+                            attendanceLog.push(entry);
+                            localStorage.setItem('attendanceLog', JSON.stringify(attendanceLog));
+                            if (currentUser && currentUser.id === name) loadEmployeeLog();
+                            if (currentUser && currentUser.role === 'admin') loadLog();
+                            attendanceForm.reset();
+                        }
+                    );
                 } else {
-                    alert('IDまたはパスワードが間違っています。');
+                    alert('このブラウザはジオロケーションをサポートしていません。場所なしでエントリを保存します。');
+                    const entry = { name, action, timestamp, locationName: 'N/A' };
+                    attendanceLog.push(entry);
+                    localStorage.setItem('attendanceLog', JSON.stringify(attendanceLog));
+                    if (currentUser && currentUser.id === name) loadEmployeeLog();
+                    if (currentUser && currentUser.role === 'admin') loadLog();
+                    attendanceForm.reset();
                 }
             });
+        }
 
-            // パスワード変更処理
-            if (changePasswordForm) {
-                changePasswordForm.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const newPassword = document.getElementById('newPassword').value;
-                    if (newPassword.length < 6) {
-                        alert('パスワードは6文字以上で入力してください。');
-                        return;
+        // 各従業員の総労働時間を計算する関数
+        function calculateTotalHours(entries) {
+            const employeeHours = {};
+            const grouped = entries.reduce((acc, entry) => {
+                if (!acc[entry.name]) acc[entry.name] = [];
+                acc[entry.name].push(entry);
+                return acc;
+            }, {});
+
+            for (const name in grouped) {
+                const empEntries = grouped[name].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                let totalMs = 0;
+                let checkInTime = null;
+
+                empEntries.forEach(entry => {
+                    if (entry.action === 'チェックイン') {
+                        checkInTime = new Date(entry.timestamp);
+                    } else if (entry.action === 'チェックアウト' && checkInTime) {
+                        const checkOutTime = new Date(entry.timestamp);
+                        totalMs += checkOutTime - checkInTime;
+                        checkInTime = null;
                     }
-                    currentUser.password = newPassword;
-                    const index = users.findIndex(u => u.id === currentUser.id);
-                    users[index] = currentUser;
-                    localStorage.setItem('users', JSON.stringify(users));
-                    alert('パスワードが変更されました。');
-                    changePasswordForm.reset();
                 });
+
+                employeeHours[name] = (totalMs / (1000 * 60 * 60)).toFixed(2);
             }
 
-            // ログアウト処理
-            logoutBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    currentUser = null;
-                    sessionStorage.removeItem('currentUser');
-                    alert('ログアウトしました');
-                    toggleUI();
-                });
-            });
+            return employeeHours;
+        }
 
-            // 従業員用ログを読み込む
-            function loadEmployeeLog() {
-                employeeLogBody.innerHTML = '';
-                const employeeEntries = attendanceLog.filter(entry => entry.name === currentUser.id);
-                employeeEntries.forEach(entry => {
-                    const locationText = entry.locationName || 'N/A';
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${entry.action}</td><td>${entry.timestamp}</td><td>${locationText}</td>`;
-                    employeeLogBody.appendChild(row);
+        // 従業員用月次レポートをCSVでダウンロード
+        if (employeeDownloadBtn) {
+            employeeDownloadBtn.addEventListener('click', () => {
+                if (!currentUser || currentUser.role !== 'employee') return;
+                const selectedYear = parseInt(employeeYear.value);
+                const selectedMonth = parseInt(employeeMonth.value);
+                
+                const employeeMonthlyEntries = attendanceLog.filter(entry => {
+                    const entryDate = new Date(entry.timestamp);
+                    return entry.name === currentUser.id && entryDate.getMonth() === selectedMonth && entryDate.getFullYear() === selectedYear;
                 });
-            }
-
-            // 管理者用ログを読み込む
-            function loadLog() {
-                logBody.innerHTML = '';
-                attendanceLog.forEach(entry => {
-                    const locationText = entry.locationName || 'N/A';
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${entry.name}</td><td>${entry.action}</td><td>${entry.timestamp}</td><td>${locationText}</td>`;
-                    logBody.appendChild(row);
-                });
-            }
-
-            // 緯度経度から場所名を取得する関数
-            async function getLocationName(lat, lng) {
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
-                    const data = await response.json();
-                    return data.display_name || '不明な場所';
-                } catch (error) {
-                    console.error('場所名の取得エラー:', error);
-                    return '場所利用不可';
+                
+                if (employeeMonthlyEntries.length === 0) {
+                    alert('選択した月にエントリが見つかりません。');
+                    return;
                 }
-            }
-
-            // フォーム送信を処理
-            if (attendanceForm) {
-                attendanceForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const name = document.getElementById('name').value;
-                    const action = e.submitter.id === 'checkInBtn' ? 'チェックイン' : 'チェックアウト';
-                    const timestamp = new Date().toLocaleString('ja-JP');
-                    const currentDate = new Date().toDateString();
-
-                    const existingEntry = attendanceLog.find(entry => {
-                        const entryDate = new Date(entry.timestamp).toDateString();
-                        return entry.name === name && entryDate === currentDate && entry.action === action;
-                    });
-
-                    if (existingEntry) {
-                        alert(`同じ日に${action}は一度しかできません。`);
-                        return;
-                    }
-
-                    if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                            async (position) => {
-                                const lat = position.coords.latitude;
-                                const lng = position.coords.longitude;
-                                const locationName = await getLocationName(lat, lng);
-                                const entry = { name, action, timestamp, locationName };
-                                attendanceLog.push(entry);
-                                localStorage.setItem('attendanceLog', JSON.stringify(attendanceLog));
-                                if (currentUser && currentUser.id === name) loadEmployeeLog();
-                                if (currentUser && currentUser.role === 'admin') loadLog();
-                                attendanceForm.reset();
-                            },
-                            (error) => {
-                                alert('場所へのアクセスが拒否されたか利用できません。場所なしでエントリを保存します。');
-                                const entry = { name, action, timestamp, locationName: 'N/A' };
-                                attendanceLog.push(entry);
-                                localStorage.setItem('attendanceLog', JSON.stringify(attendanceLog));
-                                if (currentUser && currentUser.id === name) loadEmployeeLog();
-                                if (currentUser && currentUser.role === 'admin') loadLog();
-                                attendanceForm.reset();
-                            }
-                        );
-                    } else {
-                        alert('このブラウザはジオロケーションをサポートしていません。場所なしでエントリを保存します。');
-                        const entry = { name, action, timestamp, locationName: 'N/A' };
-                        attendanceLog.push(entry);
-                        localStorage.setItem('attendanceLog', JSON.stringify(attendanceLog));
-                        if (currentUser && currentUser.id === name) loadEmployeeLog();
-                        if (currentUser && currentUser.role === 'admin') loadLog();
-                        attendanceForm.reset();
-                    }
+                
+                const totalHours = calculateTotalHours(employeeMonthlyEntries);
+                
+                let csvContent = '\ufeff';
+                csvContent += `${currentUser.id}\n`;
+                csvContent += 'アクション,タイムスタンプ,場所\n';
+                employeeMonthlyEntries.forEach(entry => {
+                    const locationText = entry.locationName || 'N/A';
+                    csvContent += `${entry.action},${entry.timestamp},"${locationText}"\n`;
                 });
-            }
+                csvContent += `総労働時間,${totalHours[currentUser.id]} 時間\n`;
+                
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${currentUser.id}_月次レポート_${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
 
-            // 各従業員の総労働時間を計算する関数
-            function calculateTotalHours(entries) {
-                const employeeHours = {};
-                const grouped = entries.reduce((acc, entry) => {
+        // 月次レポートをCSVでダウンロード (各従業員ごとに別テーブル) - 管理者専用
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', () => {
+                if (!currentUser || currentUser.role !== 'admin') return; // 管理者チェック
+                const selectedYear = parseInt(adminYear.value);
+                const selectedMonth = parseInt(adminMonth.value);
+                
+                // 当月のエントリをフィルタリング
+                const monthlyEntries = attendanceLog.filter(entry => {
+                    const entryDate = new Date(entry.timestamp);
+                    return entryDate.getMonth() === selectedMonth && entryDate.getFullYear() === selectedYear;
+                });
+                
+                if (monthlyEntries.length === 0) {
+                    alert('選択した月にエントリが見つかりません。');
+                    return;
+                }
+                
+                // 総時間を計算
+                const totalHours = calculateTotalHours(monthlyEntries);
+                
+                // 従業員ごとにグループ化
+                const groupedByEmployee = monthlyEntries.reduce((acc, entry) => {
                     if (!acc[entry.name]) acc[entry.name] = [];
                     acc[entry.name].push(entry);
                     return acc;
                 }, {});
-
-                for (const name in grouped) {
-                    const empEntries = grouped[name].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                    let totalMs = 0;
-                    let checkInTime = null;
-
-                    empEntries.forEach(entry => {
-                        if (entry.action === 'チェックイン') {
-                            checkInTime = new Date(entry.timestamp);
-                        } else if (entry.action === 'チェックアウト' && checkInTime) {
-                            const checkOutTime = new Date(entry.timestamp);
-                            totalMs += checkOutTime - checkInTime;
-                            checkInTime = null;
-                        }
-                    });
-
-                    employeeHours[name] = (totalMs / (1000 * 60 * 60)).toFixed(2);
-                }
-
-                return employeeHours;
-            }
-
-            // 従業員用月次レポートをCSVでダウンロード
-            if (employeeDownloadBtn) {
-                employeeDownloadBtn.addEventListener('click', () => {
-                    if (!currentUser || currentUser.role !== 'employee') return;
-                    const selectedYear = parseInt(employeeYear.value);
-                    const selectedMonth = parseInt(employeeMonth.value);
-                    
-                    const employeeMonthlyEntries = attendanceLog.filter(entry => {
-                        const entryDate = new Date(entry.timestamp);
-                        return entry.name === currentUser.id && entryDate.getMonth() === selectedMonth && entryDate.getFullYear() === selectedYear;
-                    });
-                    
-                    if (employeeMonthlyEntries.length === 0) {
-                        alert('選択した月にエントリが見つかりません。');
-                        return;
-                    }
-                    
-                    const totalHours = calculateTotalHours(employeeMonthlyEntries);
-                    
-                    let csvContent = '\ufeff';
-                    csvContent += `${currentUser.id}\n`;
+                
+                // CSVコンテンツを作成 (UTF-8 BOMを追加)
+                let csvContent = '\ufeff';
+                
+                for (const name in groupedByEmployee) {
+                    // 従業員名をヘッダーとして追加
+                    csvContent += `${name}\n`;
+                    // テーブルヘッダー
                     csvContent += 'アクション,タイムスタンプ,場所\n';
-                    employeeMonthlyEntries.forEach(entry => {
+                    // エントリを追加
+                    groupedByEmployee[name].forEach(entry => {
                         const locationText = entry.locationName || 'N/A';
                         csvContent += `${entry.action},${entry.timestamp},"${locationText}"\n`;
                     });
-                    csvContent += `総労働時間,${totalHours[currentUser.id]} 時間\n`;
-                    
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${currentUser.id}_月次レポート_${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}.csv`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                });
-            }
+                    // 総時間を追加
+                    csvContent += `総労働時間,${totalHours[name]} 時間\n`;
+                    // 空白行で区切る
+                    csvContent += '\n';
+                }
+                
+                // ファイルをダウンロード
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Nishiyoshi_出勤_月次レポート_${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
 
-            // 月次レポートをCSVでダウンロード (各従業員ごとに別テーブル) - 管理者専用
-            if (downloadBtn) {
-                downloadBtn.addEventListener('click', () => {
-                    if (!currentUser || currentUser.role !== 'admin') return; // 管理者チェック
-                    const selectedYear = parseInt(adminYear.value);
-                    const selectedMonth = parseInt(adminMonth.value);
-                    
-                    // 当月のエントリをフィルタリング
-                    const monthlyEntries = attendanceLog.filter(entry => {
-                        const entryDate = new Date(entry.timestamp);
-                        return entryDate.getMonth() === selectedMonth && entryDate.getFullYear() === selectedYear;
-                    });
-                    
-                    if (monthlyEntries.length === 0) {
-                        alert('選択した月にエントリが見つかりません。');
-                        return;
-                    }
-                    
-                    // 総時間を計算
-                    const totalHours = calculateTotalHours(monthlyEntries);
-                    
-                    // 従業員ごとにグループ化
-                    const groupedByEmployee = monthlyEntries.reduce((acc, entry) => {
-                        if (!acc[entry.name]) acc[entry.name] = [];
-                        acc[entry.name].push(entry);
-                        return acc;
-                    }, {});
-                    
-                    // CSVコンテンツを作成 (UTF-8 BOMを追加)
-                    let csvContent = '\ufeff';
-                    
-                    for (const name in groupedByEmployee) {
-                        // 従業員名をヘッダーとして追加
-                        csvContent += `${name}\n`;
-                        // テーブルヘッダー
-                        csvContent += 'アクション,タイムスタンプ,場所\n';
-                        // エントリを追加
-                        groupedByEmployee[name].forEach(entry => {
-                            const locationText = entry.locationName || 'N/A';
-                            csvContent += `${entry.action},${entry.timestamp},"${locationText}"\n`;
-                        });
-                        // 総時間を追加
-                        csvContent += `総労働時間,${totalHours[name]} 時間\n`;
-                        // 空白行で区切る
-                        csvContent += '\n';
-                    }
-                    
-                    // ファイルをダウンロード
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `Nishiyoshi_出勤_月次レポート_${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}.csv`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                });
-            }
-
-            // シートクリアボタン - 管理者専用
-            if (clearBtn) {
-                clearBtn.addEventListener('click', () => {
-                    if (!currentUser || currentUser.role !== 'admin') return; // 管理者チェック
-                    if (confirm('すべての出勤ログをクリアしますか？この操作は元に戻せません。')) {
-                        attendanceLog = [];
-                        localStorage.removeItem('attendanceLog');
-                        loadEmployeeLog();
-                        loadLog();
-                        alert('ログがクリアされました。');
-                    }
-                });
-            }
-        });
-    </script>
+        // シートクリアボタン - 管理者専用
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                if (!currentUser || currentUser.role !== 'admin') return; // 管理者チェック
+                if (confirm('すべての出勤ログをクリアしますか？この操作は元に戻せません。')) {
+                    attendanceLog = [];
+                    localStorage.removeItem('attendanceLog');
+                    loadEmployeeLog();
+                    loadLog();
+                    alert('ログがクリアされました。');
+                }
+            });
+        }
+    });
+</script>
 </body>
 </html>
