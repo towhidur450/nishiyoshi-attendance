@@ -1,20 +1,26 @@
-const CACHE_NAME = 'nishiyoshi-attendance-v1';
-const urlsToCache = [
+/*global self, caches, fetch */
+var CACHE_NAME = 'nishiyoshi-attendance-v1';
+var urlsToCache = [
     '/',
     '/index.html',
     '/manifest.json'
+    
 ];
 
-self.addEventListener('install', event => {
+self.addEventListener('install', function(event) {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(urlsToCache))
+            .then(function(cache) {
+                return cache.addAll(urlsToCache);
+            })
     );
 });
 
-self.addEventListener('fetch', event => {
+self.addEventListener('fetch', function(event) {
     event.respondWith(
         caches.match(event.request)
-            .then(response => response || fetch(event.request))
+            .then(function(response) {
+                return response || fetch(event.request);
+            })
     );
 });
