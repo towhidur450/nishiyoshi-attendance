@@ -24,6 +24,8 @@
         #userSection { display: none; }
         #employeeSection { display: none; }
         #adminSection { display: none; }
+        #attendanceModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        #attendanceModalContent { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: 100px auto; }
         #logoutBtn { max-width: 200px; margin: 20px auto; display: block; background: #f44336; }
         #logoutBtn:hover { background: #d32f2f; }
         #changePasswordForm { max-width: 400px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -44,9 +46,11 @@
         <div class="logo">
             Nishiyoshi 出勤簿
         </div>
-        <div class="nav-buttons">
+       <div class="nav-buttons">
+            <button id="navAttendanceBtn">出勤</button>
             <button id="navLoginBtn">ログイン</button>
             <button id="navSignupBtn">サインアップ</button>
+           
         </div>
     </div>
 
@@ -191,6 +195,23 @@
         
         <button id="logoutBtn">ログアウト</button>
     </div>
+    <!-- 出勤モーダル -->
+    <div id="attendanceModal">
+        <div id="attendanceModalContent">
+            <h2>出勤記録</h2>
+            <form id="modalAttendanceForm">
+                <label for="modalName">従業員名:</label>
+                <input type="text" id="modalName" required>
+                
+                <div class="action-buttons">
+                    <button type="submit" id="modalCheckInBtn">チェックイン</button>
+                    <button type="submit" id="modalCheckOutBtn">チェックアウト</button>
+                </div>
+            </form>
+            <button type="button" id="closeAttendanceModal" style="margin-top: 10px;">閉じる</button>
+        </div>
+    </div>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -206,11 +227,13 @@
             // 要素を取得
             const navLoginBtn = document.getElementById('navLoginBtn');
             const navSignupBtn = document.getElementById('navSignupBtn');
+            const navAttendanceBtn = document.getElementById('navAttendanceBtn');
             const backToLogin = document.getElementById('backToLogin');
             const loginForm = document.getElementById('loginForm');
             const signupForm = document.getElementById('signupForm');
             const attendanceForm = document.getElementById('attendanceForm');
             const userAttendanceForm = document.getElementById('userAttendanceForm');
+            const modalAttendanceForm = document.getElementById('modalAttendanceForm');
             const changePasswordForm = document.getElementById('changePasswordForm');
             const employeeLogBody = document.getElementById('employeeLogBody');
             const logBody = document.getElementById('logBody');
@@ -222,6 +245,8 @@
             const employeeMonth = document.getElementById('employeeMonth');
             const adminYear = document.getElementById('adminYear');
             const adminMonth = document.getElementById('adminMonth');
+            const attendanceModal = document.getElementById('attendanceModal');
+            const closeAttendanceModal = document.getElementById('closeAttendanceModal');
             
             // 追加：セクションの要素を取得 (ここが重要)
             const loginSection = document.getElementById('loginSection');
@@ -229,6 +254,7 @@
 
             console.log('navLoginBtn:', navLoginBtn);
             console.log('navSignupBtn:', navSignupBtn);
+            console.log('navAttendanceBtn:', navAttendanceBtn);
 
             // 年オプションを動的に追加
             const currentYear = new Date().getFullYear();
@@ -302,6 +328,22 @@
                 });
             }
 
+            // 出勤ボタン (モーダル表示)
+            if (navAttendanceBtn) {
+                navAttendanceBtn.addEventListener('click', () => {
+                    console.log('Attendance button clicked');
+                    attendanceModal.style.display = 'block';
+                    document.getElementById('modalName').value = '';
+                });
+            }
+
+            // モーダルを閉じる
+            if (closeAttendanceModal) {
+                closeAttendanceModal.addEventListener('click', () => {
+                    attendanceModal.style.display = 'none';
+                });
+            }
+
             if (backToLogin) {
                 backToLogin.addEventListener('click', () => {
                     console.log('Back to login clicked');
@@ -314,6 +356,7 @@
                     attendanceForm.style.display = 'none';
                 });
             }
+
 
             // サインアップ処理
             if (signupForm) {
