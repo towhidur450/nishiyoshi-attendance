@@ -38,6 +38,7 @@
         .navbar .nav-buttons { display: flex; gap: 10px; }
         .navbar button { background: #555; color: white; border: none; padding: 8px 16px; cursor: pointer; }
         .navbar button:hover { background: #d91313; }
+        #clock { font-size: 45px; font-weight: bold; color: #e71010; }
     </style>
 </head>
 <body>
@@ -47,6 +48,7 @@
             Nishiyoshi 出勤簿
         </div>
        <div class="nav-buttons">
+            <div id="clock">00:00:00</div>
             <button id="navAttendanceBtn">出勤</button>
             <button id="navLoginBtn">ログイン</button>
             <button id="navSignupBtn">サインアップ</button>
@@ -70,7 +72,6 @@
         <form id="attendanceForm">
             <label for="name">従業員名:</label>
             <input type="text" id="name" required>
-            
             <div class="action-buttons">
                 <button type="submit" id="checkInBtn">チェックイン</button>
                 <button type="submit" id="checkOutBtn">チェックアウト</button>
@@ -86,10 +87,8 @@
             <label for="signupPassword">パスワード:</label>
             <input type="password" id="signupPassword" required>
             <label for="role">ロール:</label>
-            <select id="role" required>
-                <option value="employee">従業員</option>
-                <option value="admin">管理者</option>
-            </select>
+            <label for="employee">従業員</label>
+            
             <button type="submit">サインアップ</button>
             <button type="button" id="backToLogin">戻る</button>
         </form>
@@ -202,6 +201,7 @@
             <form id="modalAttendanceForm">
                 <label for="modalName">従業員名:</label>
                 <input type="text" id="modalName" required>
+            
                 
                 <div class="action-buttons">
                     <button type="submit" id="modalCheckInBtn">チェックイン</button>
@@ -223,6 +223,19 @@
                     .then(registration => console.log('Service Worker registered'))
                     .catch(error => console.log('Service Worker registration failed'));
             }
+            // 時計の更新
+            function updateClock() {
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const clockElement = document.getElementById('clock');
+                if (clockElement) {
+                    clockElement.textContent = `${hours}:${minutes}:${seconds}`;
+                }
+            }
+            setInterval(updateClock, 1000);
+            updateClock();
             
             // 要素を取得
             const navLoginBtn = document.getElementById('navLoginBtn');
